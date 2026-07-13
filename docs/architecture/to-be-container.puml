@@ -1,0 +1,59 @@
+@startuml
+title KINOBEZDNA - To-Be Container Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Container.puml
+
+Person(user, "User", "Пользователь сервиса с ноутбука, smart TV или мобильного устройства")
+
+System_Ext(paymentSystem, "Payment System", "Внешняя платёжная система")
+System_Ext(recommendationSystem, "Recommendation System", "Внешняя рекомендательная система")
+System_Ext(contentPartners, "Content Sources", "Онлайн-кинотеатры и открытые источники")
+
+Container_Boundary(kinobezdnaPlatform, "Kinobezdna Platform") {
+    Container(apiGateway, "API Gateway / Proxy", "Go", "Единая точка входа для клиентов и маршрутизация трафика")
+    Container(legacyMonolith, "Legacy Monolith", "Go", "Старая часть системы, которая ещё не вынесена в сервисы")
+
+    Container(authService, "Auth Service", "Go", "Аутентификация и авторизация")
+    Container(catalogService, "Catalog Service", "Go", "Метаданные фильмов: жанры, актёры, оценки")
+    Container(favoritesService, "Favorites Service", "Go", "Избранное и пользовательские списки")
+    Container(billingService, "Billing Service", "Go", "Подписки, скидки и платежи")
+    Container(eventsService, "Events Service", "Go", "События для Kafka")
+
+    Container(kafka, "Kafka", "Event Bus", "Асинхронное взаимодействие между сервисами")
+    ContainerDb(legacyDb, "Legacy DB", "PostgreSQL", "Данные, ещё оставшиеся в монолите")
+    ContainerDb(authDb, "Auth DB", "PostgreSQL", "Пользователи и сессии")
+    ContainerDb(catalogDb, "Catalog DB", "PostgreSQL", "Метаданные фильмов")
+    ContainerDb(favoritesDb, "Favorites DB", "PostgreSQL", "Избранное")
+    ContainerDb(billingDb, "Billing DB", "PostgreSQL", "Подписки и платежи")
+}
+
+Rel(user, apiGateway, "Использует", "HTTPS")
+
+Rel(apiGateway, authService, "Маршрутизирует запросы авторизации", "REST/HTTPS")
+Rel(apiGateway, catalogService, "Маршрутизирует запросы каталога", "REST/HTTPS")
+Rel(apiGateway, favoritesService, "Маршрутизирует запросы избранного", "REST/HTTPS")
+Rel(apiGateway, billingService, "Маршрутизирует запросы биллинга", "REST/HTTPS")
+Rel(apiGateway, legacyMonolith, "Оставшиеся сценарии", "REST/HTTPS")
+
+Rel(legacyMonolith, legacyDb, "Читает и пишет")
+
+Rel(authService, authDb, "Читает и пишет")
+Rel(catalogService, catalogDb, "Читает и пишет")
+Rel(favoritesService, favoritesDb, "Читает и пишет")
+Rel(billingService, billingDb, "Читает и пишет")
+
+Rel(catalogService, contentPartners, "Получает данные о контенте", "REST/HTTPS")
+Rel(billingService, paymentSystem, "Создаёт и проверяет платежи", "REST/HTTPS")
+
+Rel(authService, kafka, "Публикует события", "Async")
+Rel(catalogService, kafka, "Публикует события", "Async")
+Rel(favoritesService, kafka, "Публикует события", "Async")
+Rel(billingService, kafka, "Публикует события", "Async")
+Rel(eventsService, kafka, "Читает и публикует события", "Async")
+
+Rel(recommendationSystem, kafka, "Читает доменные события", "Async")
+Rel(recommendationSystem, catalogService, "Запрашивает дополнительные данные", "REST/HTTPS")
+
+@enduml
