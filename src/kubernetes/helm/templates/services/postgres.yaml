@@ -1,3 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: postgres
+    app.kubernetes.io/name: {{ include "cinemaabyss.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: {{ .Values.database.port }}
+    targetPort: 5432
+  type: ClusterIP
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -26,20 +43,14 @@ spec:
         - containerPort: 5432
         env:
         - name: POSTGRES_USER
-          valueFrom:
-            configMapKeyRef:
-              name: cinemaabyss-config
-              key: DB_USER
+          value: {{ .Values.database.user | quote }}
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
               name: cinemaabyss-secrets
               key: DB_PASSWORD
         - name: POSTGRES_DB
-          valueFrom:
-            configMapKeyRef:
-              name: cinemaabyss-config
-              key: DB_NAME
+          value: {{ .Values.database.name | quote }}
         resources:
           {{- toYaml .Values.database.resources | nindent 10 }}
         volumeMounts:
@@ -49,45 +60,26 @@ spec:
           mountPath: /docker-entrypoint-initdb.d
         readinessProbe:
           exec:
-            command: ["pg_isready", "-U", "postgres"]
+            command: ["pg_isready", "-U", "{{ .Values.database.user }}"]
           initialDelaySeconds: 5
           periodSeconds: 10
         livenessProbe:
           exec:
-            command: ["pg_isready", "-U", "postgres"]
+            command: ["pg_isready", "-U", "{{ .Values.database.user }}"]
           initialDelaySeconds: 30
           periodSeconds: 20
+      imagePullSecrets:
+        - name: dockerconfigjson
       volumes:
       - name: postgres-init-scripts
         configMap:
           name: postgres-init-scripts
-  {{- if .Values.database.persistence.enabled }}
   volumeClaimTemplates:
   - metadata:
       name: postgres-data
     spec:
-      accessModes: ["{{ .Values.database.persistence.accessMode }}"]
+      accessModes:
+        - {{ .Values.database.persistence.accessMode }}
       resources:
         requests:
           storage: {{ .Values.database.persistence.size }}
-  {{- else }}
-      - name: postgres-data
-        emptyDir: {}
-  {{- end }}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: postgres
-  namespace: {{ .Values.global.namespace }}
-  labels:
-    app: postgres
-    app.kubernetes.io/name: {{ include "cinemaabyss.name" . }}
-    app.kubernetes.io/instance: {{ .Release.Name }}
-spec:
-  selector:
-    app: postgres
-  ports:
-  - port: {{ .Values.database.port }}
-    targetPort: 5432
-  type: ClusterIP
