@@ -16,6 +16,7 @@ env:
   MOVIES_SERVICE_IMAGE_NAME: ${{ github.repository }}/movies-service
   EVENTS_SERVICE_IMAGE_NAME: ${{ github.repository }}/events-service
   PROXY_SERVICE_IMAGE_NAME: ${{ github.repository }}/proxy-service
+  IMAGE_PLATFORMS: linux/amd64,linux/arm64
 
 jobs:
   build-and-push:
@@ -55,6 +56,7 @@ jobs:
         with:
           context: ./src/monolith
           push: true
+          platforms: ${{ env.IMAGE_PLATFORMS }}
           tags: ${{ steps.meta-monolith.outputs.tags }}
           labels: ${{ steps.meta-monolith.outputs.labels }}
           cache-from: type=gha
@@ -77,6 +79,7 @@ jobs:
         with:
           context: ./src/microservices/movies
           push: true
+          platforms: ${{ env.IMAGE_PLATFORMS }}
           tags: ${{ steps.meta-movies.outputs.tags }}
           labels: ${{ steps.meta-movies.outputs.labels }}
           cache-from: type=gha
@@ -99,6 +102,7 @@ jobs:
         with:
           context: ./src/microservices/events
           push: true
+          platforms: ${{ env.IMAGE_PLATFORMS }}
           tags: ${{ steps.meta-events.outputs.tags }}
           labels: ${{ steps.meta-events.outputs.labels }}
           cache-from: type=gha
@@ -121,6 +125,7 @@ jobs:
         with:
           context: ./src/microservices/proxy
           push: true
+          platforms: ${{ env.IMAGE_PLATFORMS }}
           tags: ${{ steps.meta-proxy.outputs.tags }}
           labels: ${{ steps.meta-proxy.outputs.labels }}
           cache-from: type=gha
